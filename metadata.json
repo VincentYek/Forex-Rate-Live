@@ -1,0 +1,6 @@
+{
+  "name": "SingaForex - Singapore SGD Exchange Rate Tool",
+  "description": "Real-time Singapore Dollar (SGD) exchange rates, live currency converter, interbank & retail spreads, and historical trends for global currencies.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
