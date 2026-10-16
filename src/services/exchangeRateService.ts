@@ -84,6 +84,39 @@ export async function fetchLiveRates(): Promise<{
   source: 'live-api' | 'cached' | 'fallback';
   timestamp: string;
 }> {
+  // 1. Try querying our MAS API serverless route (/api/exchangerates)
+  try {
+    const masRes = await fetch('/api/exchangerates', {
+      headers: { 'Accept': 'application/json' },
+    });
+    if (masRes.ok) {
+      const masData = await masRes.json();
+      if (masData && masData.ratesPerSGD && Object.keys(masData.ratesPerSGD).length > 0) {
+        const ratesMap: Record<string, LiveRate> = {};
+        for (const curr of SUPPORTED_CURRENCIES) {
+          const masRate = masData.ratesPerSGD[curr.code];
+          if (masRate && typeof masRate === 'number') {
+            const baseline = BASELINE_RATES_SGD[curr.code];
+            const change = baseline ? baseline.change24h : 0.05;
+            ratesMap[curr.code] = buildRateRecord(curr.code, masRate, change);
+          } else {
+            const baseline = BASELINE_RATES_SGD[curr.code] || { rate: 1, change24h: 0 };
+            ratesMap[curr.code] = buildRateRecord(curr.code, baseline.rate, baseline.change24h);
+          }
+        }
+        const timestamp = getSingaporeTimeString();
+        try {
+          localStorage.setItem(STORAGE_KEY_RATES, JSON.stringify(ratesMap));
+          localStorage.setItem(STORAGE_KEY_LAST_FETCH, timestamp);
+        } catch {}
+        return { rates: ratesMap, source: 'live-api', timestamp };
+      }
+    }
+  } catch {
+    // Local API route not reachable yet or offline, continue to fallback
+  }
+
+  // 2. Fetch live rates from open API
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3500);
